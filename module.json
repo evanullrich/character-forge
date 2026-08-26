@@ -1,0 +1,46 @@
+{
+  "id": "character-forge",
+  "title": "Character Forge",
+  "description": "Fill out a D&D 5e character sheet fast — enter values by hand or auto-generate ability scores, HP, and other fields, all written directly to the actor.",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "evanullrich",
+      "url": "https://github.com/evanullrich"
+    }
+  ],
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/character-forge.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": false,
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "4"
+        }
+      }
+    ],
+    "requires": [],
+    "recommends": []
+  },
+  "url": "https://github.com/evanullrich/character-forge",
+  "manifest": "https://github.com/evanullrich/character-forge/releases/latest/download/module.json",
+  "download": "https://github.com/evanullrich/character-forge/releases/latest/download/character-forge.zip"
+}

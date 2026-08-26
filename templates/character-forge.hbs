@@ -1,0 +1,77 @@
+<form class="character-forge-form" autocomplete="off">
+
+  <fieldset>
+    <legend>{{localize "CHARFORGE.Dialog.actorSelect"}}</legend>
+    <div class="row">
+      <select name="actorId">
+        <option value="">{{localize "CHARFORGE.Dialog.newActor"}}</option>
+        {{#each actors as |actor|}}
+          <option value="{{actor.id}}" {{selected (eq actor.id ../selectedActorId)}}>{{actor.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{localize "CHARFORGE.Dialog.identity"}}</legend>
+    <div class="row">
+      <label for="cf-name">{{localize "CHARFORGE.Dialog.name"}}</label>
+      <input id="cf-name" type="text" name="name" placeholder="{{localize 'CHARFORGE.Dialog.name'}}" />
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{localize "CHARFORGE.Dialog.abilities"}}</legend>
+    <div class="abilities-grid">
+      {{#each abilities as |key|}}
+        <div class="ability-block">
+          <label for="cf-ability-{{key}}">{{key}}</label>
+          <input id="cf-ability-{{key}}" type="number" name="abilities.{{key}}" value="10" min="1" max="30" />
+        </div>
+      {{/each}}
+    </div>
+    <div class="row">
+      <button type="button" data-action="rollAbilities">
+        <i class="fa-solid fa-dice-d6"></i> {{localize "CHARFORGE.Dialog.rollAbilities"}}
+      </button>
+      <button type="button" data-action="standardArray">
+        <i class="fa-solid fa-list-ol"></i> {{localize "CHARFORGE.Dialog.standardArray"}}
+      </button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{localize "CHARFORGE.Dialog.hp"}}</legend>
+    <div class="row">
+      <label for="cf-hp-value">{{localize "CHARFORGE.Dialog.hpValue"}}</label>
+      <input id="cf-hp-value" type="number" name="hp.value" value="0" min="0" />
+      <label for="cf-hp-max">{{localize "CHARFORGE.Dialog.hpMax"}}</label>
+      <input id="cf-hp-max" type="number" name="hp.max" min="0" placeholder="{{localize 'CHARFORGE.Dialog.hpMaxAuto'}}" />
+      <button type="button" data-action="rollHp">
+        <i class="fa-solid fa-dice-d20"></i> {{localize "CHARFORGE.Dialog.rollHp"}}
+      </button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{localize "CHARFORGE.Dialog.details"}}</legend>
+    <div class="row">
+      <label for="cf-alignment">{{localize "CHARFORGE.Dialog.alignment"}}</label>
+      <select id="cf-alignment" name="alignment">
+        <option value=""></option>
+        {{selectOptions alignments}}
+      </select>
+    </div>
+    <div class="row">
+      <label for="cf-background">{{localize "CHARFORGE.Dialog.background"}}</label>
+      <input id="cf-background" type="text" name="background" />
+    </div>
+  </fieldset>
+
+  <div class="form-footer">
+    <button type="button" data-action="apply">
+      <i class="fa-solid fa-check"></i> {{localize "CHARFORGE.Dialog.apply"}}
+    </button>
+  </div>
+
+</form>

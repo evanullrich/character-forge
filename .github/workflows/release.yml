@@ -1,0 +1,16 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: zip -r character-forge.zip module.json scripts/ templates/ styles/ lang/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            character-forge.zip
+            module.json
+          generate_release_notes: true

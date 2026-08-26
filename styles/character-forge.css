@@ -1,0 +1,86 @@
+@layer character-forge {
+  .character-forge {
+    color: var(--color-text-primary);
+  }
+
+  .character-forge .window-content {
+    background: var(--color-bg-primary);
+    padding: 0.75rem;
+  }
+
+  .character-forge form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .character-forge fieldset {
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 0.75rem 0.75rem;
+  }
+
+  .character-forge legend {
+    font-family: var(--font-primary);
+    font-weight: bold;
+    padding: 0 0.4rem;
+  }
+
+  .character-forge .row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .character-forge .abilities-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+  }
+
+  .character-forge .ability-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  .character-forge .ability-block label {
+    font-size: var(--font-size-11, 11px);
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  .character-forge .ability-block input {
+    width: 100%;
+    text-align: center;
+  }
+
+  .character-forge .hint {
+    font-size: var(--font-size-11, 11px);
+    opacity: 0.7;
+    margin: 0;
+  }
+
+  .character-forge .form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--color-border-light);
+    padding-top: 0.5rem;
+  }
+
+  .character-forge label {
+    font-family: var(--font-primary);
+  }
+
+  .character-forge select,
+  .character-forge input[type="text"],
+  .character-forge input[type="number"] {
+    background: var(--color-bg-secondary, transparent);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+  }
+}
