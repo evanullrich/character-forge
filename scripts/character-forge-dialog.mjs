@@ -53,7 +53,9 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       actorChoices,
       selectedActorId: this.actor?.id ?? '',
       abilities: ABILITIES,
-      alignments: CONFIG.DND5E?.alignments ?? {},
+      // dnd5e stores alignment as free text and displays it verbatim, so the
+      // option value must be the label itself, not the CONFIG key ('lg').
+      alignments: Object.values(CONFIG.DND5E?.alignments ?? {}).map((label) => ({ label })),
     };
   }
 
@@ -252,11 +254,8 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       labels[`system.abilities.${key}.value`] = key.toUpperCase();
     }
 
-    // Show alignment by its label rather than its raw key (e.g. "lg").
-    const alignments = CONFIG.DND5E?.alignments ?? {};
     const display = (path, value) => {
       if (value === '' || value === null || value === undefined) return '—';
-      if (path === 'system.details.alignment') return alignments[value] ?? value;
       return String(value);
     };
 
