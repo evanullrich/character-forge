@@ -24,19 +24,22 @@ Hooks.once('ready', () => {
   };
 });
 
-Hooks.on('getActorDirectoryEntryContext', () => {});
-
-Hooks.on('renderActorDirectory', (app, html) => {
-  const root = html instanceof HTMLElement ? html : html[0];
-  if (!root || root.querySelector('.character-forge-open')) return;
-
-  const footer = root.querySelector('.directory-footer') ?? root.querySelector('.directory-header');
+Hooks.on('renderActorDirectory', (app, element) => {
+  const root = element instanceof HTMLElement ? element : element[0];
+  const footer = root?.querySelector('.directory-footer') ?? root?.querySelector('.directory-header');
   if (!footer) return;
 
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.classList.add('character-forge-open');
-  button.innerHTML = `<i class="fa-solid fa-hammer"></i> ${game.i18n.localize('CHARFORGE.OpenButton')}`;
-  button.addEventListener('click', () => new CharacterForgeDialog().render({ force: true }));
-  footer.appendChild(button);
+  // Handlebars re-renders (and replaces) this footer on every directory
+  // re-render (folder toggle, actor CRUD, search, etc.), discarding any
+  // previously appended button along with its listener. Re-inject each time
+  // the hook fires instead of relying on the node/listener surviving.
+  let button = footer.querySelector('.character-forge-open');
+  if (!button) {
+    button = document.createElement('button');
+    button.type = 'button';
+    button.classList.add('character-forge-open');
+    button.innerHTML = `<i class="fa-solid fa-hammer"></i> ${game.i18n.localize('CHARFORGE.OpenButton')}`;
+    footer.appendChild(button);
+  }
+  button.onclick = () => new CharacterForgeDialog().render({ force: true });
 });
