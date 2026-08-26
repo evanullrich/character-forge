@@ -95,7 +95,10 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
   static async #onApply(event, target) {
     event.preventDefault();
     const app = this;
-    const form = app.element;
+    // app.element is the application root <div>; FormDataExtended needs the
+    // actual <form> child, which is what carries the iterable `elements` list.
+    const form = app.element.querySelector('form');
+    if (!form) return;
     const formData = new foundry.applications.ux.FormDataExtended(form).object;
 
     let actor = app.actor;
