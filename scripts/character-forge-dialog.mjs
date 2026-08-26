@@ -35,9 +35,10 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     const actors = game.actors
       .filter((a) => a.type === 'character' && a.isOwner)
       .sort((a, b) => a.name.localeCompare(b.name));
+    const actorChoices = Object.fromEntries(actors.map((a) => [a.id, a.name]));
 
     return {
-      actors,
+      actorChoices,
       selectedActorId: this.actor?.id ?? '',
       abilities: ABILITIES,
       alignments: CONFIG.DND5E?.alignments ?? {},

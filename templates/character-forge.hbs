@@ -4,10 +4,7 @@
     <legend>{{localize "CHARFORGE.Dialog.actorSelect"}}</legend>
     <div class="row">
       <select name="actorId">
-        <option value="">{{localize "CHARFORGE.Dialog.newActor"}}</option>
-        {{#each actors as |actor|}}
-          <option value="{{actor.id}}" {{selected (eq actor.id ../selectedActorId)}}>{{actor.name}}</option>
-        {{/each}}
+        {{selectOptions actorChoices selected=selectedActorId blank=(localize "CHARFORGE.Dialog.newActor")}}
       </select>
     </div>
   </fieldset>
@@ -58,8 +55,7 @@
     <div class="row">
       <label for="cf-alignment">{{localize "CHARFORGE.Dialog.alignment"}}</label>
       <select id="cf-alignment" name="alignment">
-        <option value=""></option>
-        {{selectOptions alignments}}
+        {{selectOptions alignments blank=""}}
       </select>
     </div>
     <div class="row">
