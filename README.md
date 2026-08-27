@@ -1,3 +1,4 @@
+PLEASE NOTE THIS IS A PERSONAL PROJECT CREATED USING CLAUDE AI. USE AT YOUR OWN RISK.
 # Character Forge
 
 A Foundry VTT (v13+) module for the dnd5e system. Opens a dialog to fill out
