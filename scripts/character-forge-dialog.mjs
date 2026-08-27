@@ -13,6 +13,16 @@ function pointBuyCost(score) {
   return POINT_BUY_COSTS[score] ?? null;
 }
 
+/**
+ * Creating a character through Character Forge is limited to Gamemasters and
+ * Assistant Gamemasters, regardless of the world's ACTOR_CREATE permission.
+ * Foundry still enforces document permissions server-side; this only keeps the
+ * UI from offering an action that would be refused.
+ */
+function canCreateCharacter() {
+  return game.user.role >= CONST.USER_ROLES.ASSISTANT;
+}
+
 export class CharacterForgeDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: 'character-forge-dialog',
@@ -51,6 +61,7 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
     return {
       actorChoices,
+      canCreate: canCreateCharacter(),
       selectedActorId: this.actor?.id ?? '',
       abilities: ABILITIES,
       // dnd5e stores alignment as free text and displays it verbatim, so the
@@ -61,15 +72,68 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
   _onRender(context, options) {
     super._onRender(context, options);
-    this.element.querySelector('[name="actorId"]')?.addEventListener('change', (event) => {
+    const actorSelect = this.element.querySelector('[name="actorId"]');
+    // Without a blank option the select shows the first actor already chosen,
+    // so adopt whatever is rendered rather than waiting for a change event.
+    if (actorSelect && !this.actor) {
+      this.actor = game.actors.get(actorSelect.value) ?? null;
+    }
+    actorSelect?.addEventListener('change', (event) => {
       this.actor = game.actors.get(event.target.value) ?? null;
+      this.populateFromActor();
     });
+    this.populateFromActor();
 
     for (const key of ABILITIES) {
       this.element
         .querySelector(`[name="abilities.${key}"]`)
         ?.addEventListener('input', () => this.refreshPointBuy());
     }
+    this.refreshPointBuy();
+  }
+
+  /**
+   * Load the selected actor's current values into the form.
+   *
+   * Without this the inputs keep their template defaults, so applying to an
+   * existing actor would submit those defaults and silently overwrite fields
+   * the user never touched (e.g. knocking HP down to 0).
+   *
+   * Clears the form back to blanks when no actor is selected.
+   */
+  populateFromActor() {
+    const root = this.element;
+    const actor = this.actor;
+    const set = (selector, value) => {
+      const input = root.querySelector(selector);
+      if (input) input.value = value ?? '';
+    };
+
+    if (!actor) {
+      set('[name="name"]', '');
+      set('[name="hp.value"]', '');
+      set('[name="hp.max"]', '');
+      set('[name="alignment"]', '');
+      set('[name="background"]', '');
+      for (const key of ABILITIES) set(`[name="abilities.${key}"]`, 10);
+      this.refreshPointBuy();
+      return;
+    }
+
+    const hp = actor.system?.attributes?.hp ?? {};
+    set('[name="name"]', actor.name);
+    set('[name="hp.value"]', hp.value);
+    // hp.max is a nullable override; leave it blank when auto-derived.
+    set('[name="hp.max"]', hp.max);
+    set('[name="alignment"]', actor.system?.details?.alignment ?? '');
+
+    const backgroundId = actor.system?.details?.background;
+    set('[name="background"]', backgroundId ? (actor.items.get(backgroundId)?.name ?? '') : '');
+
+    for (const key of ABILITIES) {
+      set(`[name="abilities.${key}"]`, actor.system?.abilities?.[key]?.value ?? 10);
+    }
+
     this.refreshPointBuy();
   }
 
@@ -207,9 +271,13 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     const name = formData['name']?.trim();
 
     const updateData = {
-      'system.attributes.hp.value': Number(formData['hp.value']) || 0,
       'system.details.alignment': formData['alignment'] || '',
     };
+    // Blank HP fields mean "leave as-is" rather than "set to zero".
+    const hpValue = formData['hp.value'];
+    if (hpValue !== '' && hpValue != null) {
+      updateData['system.attributes.hp.value'] = Number(hpValue);
+    }
     // HP max is auto-derived from class Hit Dice + CON unless explicitly overridden here.
     const hpMax = formData['hp.max'];
     if (hpMax !== '' && hpMax != null) {
@@ -219,21 +287,39 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       updateData[`system.abilities.${key}.value`] = Number(formData[`abilities.${key}`]) || 10;
     }
 
+    // Stage the rename before confirming so it appears in the diff too.
+    if (actor && name && name !== actor.name) updateData.name = name;
+
     // Applying to an existing actor overwrites its current stats — confirm first.
     if (actor && !(await CharacterForgeDialog.#confirmOverwrite(actor, updateData))) return;
 
     if (!actor) {
+      if (!canCreateCharacter()) {
+        ui.notifications.error(game.i18n.localize('CHARFORGE.Dialog.noCreatePermission'));
+        return;
+      }
       if (!name) {
         ui.notifications.warn(game.i18n.localize('CHARFORGE.Dialog.noActor'));
         return;
       }
       actor = await Actor.create({ name, type: 'character' });
-    } else if (name && name !== actor.name) {
-      updateData.name = name;
+    } else {
+      // Ownership is checked again here because the actor was chosen earlier and
+      // its permissions may have changed in the meantime.
+      if (!actor.isOwner) {
+        ui.notifications.error(game.i18n.localize('CHARFORGE.Dialog.noUpdatePermission'));
+        return;
+      }
     }
 
-    await actor.update(updateData);
-    await app.#applyBackground(actor, formData['background']?.trim());
+    try {
+      await actor.update(updateData);
+      await app.#applyBackground(actor, formData['background']?.trim());
+    } catch (err) {
+      console.error('character-forge | Failed to apply character', err);
+      ui.notifications.error(game.i18n.localize('CHARFORGE.Dialog.applyFailed'));
+      return;
+    }
 
     ui.notifications.info(game.i18n.format('CHARFORGE.Dialog.applied', { name: actor.name }));
     app.actor = actor;
@@ -250,6 +336,7 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       'system.attributes.hp.max': game.i18n.localize('CHARFORGE.Dialog.hpMax'),
       'system.details.alignment': game.i18n.localize('CHARFORGE.Dialog.alignment'),
     };
+    labels['name'] = game.i18n.localize('CHARFORGE.Dialog.name');
     for (const key of ABILITIES) {
       labels[`system.abilities.${key}.value`] = key.toUpperCase();
     }
@@ -261,7 +348,6 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
     const rows = [];
     for (const [path, next] of Object.entries(updateData)) {
-      if (path === 'name') continue;
       const current = foundry.utils.getProperty(actor, path);
       if (String(current ?? '') === String(next ?? '')) continue;
       rows.push(`<tr><td>${labels[path] ?? path}</td>

@@ -4,8 +4,15 @@
     <legend>{{localize "CHARFORGE.Dialog.actorSelect"}}</legend>
     <div class="row">
       <select name="actorId">
-        {{selectOptions actorChoices selected=selectedActorId blank=(localize "CHARFORGE.Dialog.newActor")}}
+        {{#if canCreate}}
+          {{selectOptions actorChoices selected=selectedActorId blank=(localize "CHARFORGE.Dialog.newActor")}}
+        {{else}}
+          {{selectOptions actorChoices selected=selectedActorId}}
+        {{/if}}
       </select>
+      {{#unless canCreate}}
+        <p class="hint">{{localize "CHARFORGE.Dialog.ownedOnlyHint"}}</p>
+      {{/unless}}
     </div>
   </fieldset>
 

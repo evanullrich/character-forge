@@ -28,6 +28,10 @@
   "CHARFORGE.Dialog.confirmNo": "Cancel",
   "CHARFORGE.Dialog.noChanges": "Character Forge | No changes to apply.",
   "CHARFORGE.Dialog.noActor": "Select or create an actor first.",
+  "CHARFORGE.Dialog.noCreatePermission": "Only a Gamemaster or Assistant Gamemaster can create a new character.",
+  "CHARFORGE.Dialog.noUpdatePermission": "You do not own that character and cannot modify it.",
+  "CHARFORGE.Dialog.ownedOnlyHint": "You can update characters you own. Ask your Gamemaster to create a new one.",
+  "CHARFORGE.Dialog.applyFailed": "Character Forge | Failed to apply changes. See the console for details.",
   "CHARFORGE.Settings.defaultHitDie.name": "Default Hit Die",
   "CHARFORGE.Settings.defaultHitDie.hint": "Used when rolling max HP if the actor has no class item yet."
 }
