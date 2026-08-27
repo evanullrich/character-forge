@@ -50,11 +50,15 @@
 
   <fieldset>
     <legend>{{localize "CHARFORGE.Dialog.hp"}}</legend>
-    <div class="row">
-      <label for="cf-hp-value">{{localize "CHARFORGE.Dialog.hpValue"}}</label>
-      <input id="cf-hp-value" type="number" name="hp.value" value="0" min="0" />
-      <label for="cf-hp-max">{{localize "CHARFORGE.Dialog.hpMax"}}</label>
-      <input id="cf-hp-max" type="number" name="hp.max" min="0" placeholder="{{localize 'CHARFORGE.Dialog.hpMaxAuto'}}" />
+    <div class="hp-row">
+      <div class="hp-block">
+        <label for="cf-hp-value">{{localize "CHARFORGE.Dialog.hpValue"}}</label>
+        <input id="cf-hp-value" type="number" name="hp.value" min="0" />
+      </div>
+      <div class="hp-block">
+        <label for="cf-hp-max">{{localize "CHARFORGE.Dialog.hpMax"}}</label>
+        <input id="cf-hp-max" type="number" name="hp.max" min="0" placeholder="{{localize 'CHARFORGE.Dialog.hpMaxAuto'}}" />
+      </div>
       <button type="button" data-action="rollHp">
         <i class="fa-solid fa-dice-d20"></i> {{localize "CHARFORGE.Dialog.rollHp"}}
       </button>

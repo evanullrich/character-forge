@@ -331,12 +331,14 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
    * Returns true if the user approved the overwrite.
    */
   static async #confirmOverwrite(actor, updateData) {
+    // These labels stand alone in the diff table, without the surrounding
+    // fieldset legend that gives the form's own labels their context.
     const labels = {
-      'system.attributes.hp.value': game.i18n.localize('CHARFORGE.Dialog.hpValue'),
-      'system.attributes.hp.max': game.i18n.localize('CHARFORGE.Dialog.hpMax'),
-      'system.details.alignment': game.i18n.localize('CHARFORGE.Dialog.alignment'),
+      'system.attributes.hp.value': game.i18n.localize('CHARFORGE.Dialog.diffHpValue'),
+      'system.attributes.hp.max': game.i18n.localize('CHARFORGE.Dialog.diffHpMax'),
+      'system.details.alignment': game.i18n.localize('CHARFORGE.Dialog.diffAlignment'),
+      name: game.i18n.localize('CHARFORGE.Dialog.diffName'),
     };
-    labels['name'] = game.i18n.localize('CHARFORGE.Dialog.name');
     for (const key of ABILITIES) {
       labels[`system.abilities.${key}.value`] = key.toUpperCase();
     }
