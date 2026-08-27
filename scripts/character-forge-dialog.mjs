@@ -127,8 +127,9 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     set('[name="hp.max"]', hp.max);
     set('[name="alignment"]', actor.system?.details?.alignment ?? '');
 
-    const backgroundId = actor.system?.details?.background;
-    set('[name="background"]', backgroundId ? (actor.items.get(backgroundId)?.name ?? '') : '');
+    // Read the background off the actor's items; details.background is the
+    // resolved Item document rather than an id.
+    set('[name="background"]', actor.items.find((i) => i.type === 'background')?.name ?? '');
 
     for (const key of ABILITIES) {
       set(`[name="abilities.${key}"]`, actor.system?.abilities?.[key]?.value ?? 10);
@@ -380,16 +381,16 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
   async #applyBackground(actor, backgroundName) {
     if (!backgroundName) return;
 
-    const existingId = actor.system.details?.background;
-    const existing = existingId ? actor.items.get(existingId) : null;
+    // dnd5e only permits one background Item per character and rejects a second
+    // one outright. system.details.background is the resolved Item document (not
+    // an id), so find the existing background from the actor's own items and
+    // rename it rather than creating another.
+    const existing = actor.items.find((i) => i.type === 'background');
     if (existing) {
       if (existing.name !== backgroundName) await existing.update({ name: backgroundName });
       return;
     }
 
-    const [created] = await actor.createEmbeddedDocuments('Item', [
-      { name: backgroundName, type: 'background' },
-    ]);
-    await actor.update({ 'system.details.background': created.id });
+    await actor.createEmbeddedDocuments('Item', [{ name: backgroundName, type: 'background' }]);
   }
 }
