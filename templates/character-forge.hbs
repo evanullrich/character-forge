@@ -22,6 +22,14 @@
       <label for="cf-name">{{localize "CHARFORGE.Dialog.name"}}</label>
       <input id="cf-name" type="text" name="name" placeholder="{{localize 'CHARFORGE.Dialog.name'}}" />
     </div>
+    {{#if canAssignOwnership}}
+      <div class="row">
+        <label for="cf-owner">{{localize "CHARFORGE.Dialog.owner"}}</label>
+        <select id="cf-owner" name="owner">
+          {{selectOptions playerChoices blank=(localize "CHARFORGE.Dialog.ownerNone")}}
+        </select>
+      </div>
+    {{/if}}
   </fieldset>
 
   <fieldset>

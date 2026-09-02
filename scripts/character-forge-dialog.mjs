@@ -23,6 +23,22 @@ function canCreateCharacter() {
   return game.user.role >= CONST.USER_ROLES.ASSISTANT;
 }
 
+/**
+ * Only a full Gamemaster may hand a character to another user. Assistants can
+ * create characters but not reassign who owns them.
+ */
+function canAssignOwnership() {
+  return game.user.isGM;
+}
+
+/** Non-GM users, who are the meaningful candidates to own a character. */
+function ownershipCandidates() {
+  return game.users
+    .filter((u) => !u.isGM)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((u) => ({ id: u.id, name: u.name }));
+}
+
 export class CharacterForgeDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: 'character-forge-dialog',
@@ -62,6 +78,8 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     return {
       actorChoices,
       canCreate: canCreateCharacter(),
+      canAssignOwnership: canAssignOwnership(),
+      playerChoices: Object.fromEntries(ownershipCandidates().map((u) => [u.id, u.name])),
       selectedActorId: this.actor?.id ?? '',
       abilities: ABILITIES,
       // dnd5e stores alignment as free text and displays it verbatim, so the
@@ -110,6 +128,7 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     };
 
     if (!actor) {
+      set('[name="owner"]', '');
       set('[name="name"]', '');
       set('[name="hp.value"]', '');
       set('[name="hp.max"]', '');
@@ -130,6 +149,13 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     // Read the background off the actor's items; details.background is the
     // resolved Item document rather than an id.
     set('[name="background"]', actor.items.find((i) => i.type === 'background')?.name ?? '');
+
+    // Show whichever player currently holds OWNER, if any.
+    const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+    const currentOwner = ownershipCandidates().find(
+      (u) => actor.ownership?.[u.id] === OWNER,
+    );
+    set('[name="owner"]', currentOwner?.id ?? '');
 
     for (const key of ABILITIES) {
       set(`[name="abilities.${key}"]`, actor.system?.abilities?.[key]?.value ?? 10);
@@ -291,6 +317,13 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     // Stage the rename before confirming so it appears in the diff too.
     if (actor && name && name !== actor.name) updateData.name = name;
 
+    // Ownership is GM-only; ignore whatever the form carries otherwise.
+    const ownerId = canAssignOwnership() ? (formData['owner'] || '') : null;
+    if (ownerId !== null && actor) {
+      const next = CharacterForgeDialog.#ownershipWithOwner(actor.ownership, ownerId);
+      if (next) updateData.ownership = next;
+    }
+
     // Applying to an existing actor overwrites its current stats — confirm first.
     if (actor && !(await CharacterForgeDialog.#confirmOverwrite(actor, updateData))) return;
 
@@ -303,7 +336,11 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
         ui.notifications.warn(game.i18n.localize('CHARFORGE.Dialog.noActor'));
         return;
       }
-      actor = await Actor.create({ name, type: 'character' });
+      const createData = { name, type: 'character' };
+      if (ownerId) {
+        createData.ownership = CharacterForgeDialog.#ownershipWithOwner({}, ownerId);
+      }
+      actor = await Actor.create(createData);
     } else {
       // Ownership is checked again here because the actor was chosen earlier and
       // its permissions may have changed in the meantime.
@@ -328,6 +365,32 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
   }
 
   /**
+   * Build an ownership object granting OWNER to `ownerId`, clearing OWNER from
+   * any other player while leaving default and GM entries untouched. Returns
+   * null when nothing would change.
+   */
+  static #ownershipWithOwner(current, ownerId) {
+    const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+    const next = foundry.utils.deepClone(current ?? {});
+    let changed = false;
+
+    for (const { id } of ownershipCandidates()) {
+      const wanted = id === ownerId;
+      const has = next[id] === OWNER;
+      if (wanted && !has) {
+        next[id] = OWNER;
+        changed = true;
+      } else if (!wanted && has) {
+        // Drop the entry entirely so the actor falls back to the default level.
+        delete next[id];
+        changed = true;
+      }
+    }
+
+    return changed ? next : null;
+  }
+
+  /**
    * Confirm overwriting an existing actor, showing which values actually change.
    * Returns true if the user approved the overwrite.
    */
@@ -339,12 +402,21 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       'system.attributes.hp.max': game.i18n.localize('CHARFORGE.Dialog.diffHpMax'),
       'system.details.alignment': game.i18n.localize('CHARFORGE.Dialog.diffAlignment'),
       name: game.i18n.localize('CHARFORGE.Dialog.diffName'),
+      ownership: game.i18n.localize('CHARFORGE.Dialog.diffOwner'),
     };
     for (const key of ABILITIES) {
       labels[`system.abilities.${key}.value`] = key.toUpperCase();
     }
 
+    // Ownership is an object; show the owning player's name instead of it
+    // stringifying to [object Object].
+    const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+    const ownerName = (ownership) =>
+      ownershipCandidates().find((u) => ownership?.[u.id] === OWNER)?.name ??
+      game.i18n.localize('CHARFORGE.Dialog.ownerNone');
+
     const display = (path, value) => {
+      if (path === 'ownership') return ownerName(value);
       if (value === '' || value === null || value === undefined) return '—';
       return String(value);
     };
@@ -352,7 +424,10 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     const rows = [];
     for (const [path, next] of Object.entries(updateData)) {
       const current = foundry.utils.getProperty(actor, path);
-      if (String(current ?? '') === String(next ?? '')) continue;
+      if (path === 'ownership') {
+        // Compare the owning player, not the whole ownership object.
+        if (ownerName(current) === ownerName(next)) continue;
+      } else if (String(current ?? '') === String(next ?? '')) continue;
       rows.push(`<tr><td>${labels[path] ?? path}</td>
         <td class="cf-old">${foundry.utils.escapeHTML(display(path, current))}</td>
         <td>→</td>
