@@ -1,7 +1,7 @@
 {
   "id": "character-forge",
   "title": "Character Forge",
-  "description": "Fill out a D&D 5e character sheet fast \u2014 enter values by hand or auto-generate ability scores, HP, and other fields, all written directly to the actor.",
+  "description": "Fill out a D&D 5e character sheet fast — enter values by hand or auto-generate ability scores, HP, and other fields, all written directly to the actor.",
   "version": "1.3.0",
   "compatibility": {
     "minimum": "13",
