@@ -372,17 +372,19 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
   /**
    * Walk the actor through the dnd5e sheet's own species and class pickers.
    *
-   * Creating these Items directly would skip the system's advancement flow --
-   * which is what sets level-one hit points -- and would bypass modules that
-   * wrap item creation, such as Plutonium. Delegating to the sheet's `findItem`
-   * action instead means the picker, the advancement prompts and any module
-   * hooks all behave exactly as they do from the character sheet.
+   * Clicking the sheet's real "Add Species" / "Add Class" buttons rather than
+   * invoking its `findItem` action directly: modules such as Plutonium listen
+   * for the click and offer their own source chooser, so calling the action
+   * would skip straight past them to the compendium browser. Going through the
+   * button means whatever the user sees from the character sheet is exactly
+   * what they get here.
    */
   static async #promptOrigin(actor) {
     const sheet = actor.sheet;
-    const findItem = sheet?.constructor?.DEFAULT_OPTIONS?.actions?.findItem;
-    const handler = typeof findItem === 'function' ? findItem : findItem?.handler;
-    if (!handler) return;
+    if (!sheet) return;
+
+    // The buttons only exist once the sheet has rendered.
+    if (!sheet.rendered) await sheet.render(true);
 
     const steps = [
       { type: 'race', message: 'CHARFORGE.Origin.pickSpecies' },
@@ -391,15 +393,68 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
     for (const { type, message } of steps) {
       if (actor.items.some((i) => i.type === type)) continue;
-      ui.notifications.info(game.i18n.format(message, { name: actor.name }));
 
-      // findItem reads the item type off the triggering element's dataset and
-      // reports failures through the sheet, so give it one and let it own the
-      // error handling.
-      const target = document.createElement('button');
-      target.dataset.itemType = type;
-      await handler.call(sheet, new Event('click'), target);
+      const button = sheet.element?.querySelector(
+        `[data-action="findItem"][data-item-type="${type}"]`
+      );
+      if (!button) continue;
+
+      ui.notifications.info(game.i18n.format(message, { name: actor.name }));
+      button.click();
+
+      // These pickers are non-blocking, so without waiting the second one
+      // would open stacked on top of the first.
+      await CharacterForgeDialog.#waitForItem(actor, type);
     }
+  }
+
+  /**
+   * Resolve once the actor has an Item of `type`, or once the user backs out.
+   *
+   * There is no promise to await here -- the picker a module substitutes in is
+   * its own application, and some of them close without firing a close hook --
+   * so watch for the item and fall back to polling for the picker's window
+   * disappearing from the DOM.
+   */
+  static async #waitForItem(actor, type) {
+    if (actor.items.some((i) => i.type === type)) return;
+
+    // Whatever rendered in response to the click is the picker to watch.
+    const opened = new Set();
+    const onRender = (app) => opened.add(app);
+    Hooks.on('renderApplicationV2', onRender);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    Hooks.off('renderApplicationV2', onRender);
+
+    // Nothing opened means there is no picker to wait on.
+    if (!opened.size) return;
+
+    const isOpen = () =>
+      [...opened].some((app) => app.rendered && app.element?.isConnected);
+
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearInterval(timer);
+        Hooks.off('createItem', onCreate);
+        resolve();
+      };
+
+      const onCreate = (item) => {
+        if (item.parent?.id === actor.id && item.type === type) finish();
+      };
+      Hooks.on('createItem', onCreate);
+
+      // Poll rather than hook: give up once every window the click opened has
+      // gone away, or if the sheet itself closes.
+      const timer = setInterval(() => {
+        if (actor.items.some((i) => i.type === type)) finish();
+        else if (!actor.sheet?.rendered) finish();
+        else if (!isOpen()) finish();
+      }, 300);
+    });
   }
 
   /**
