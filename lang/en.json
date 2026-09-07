@@ -41,16 +41,6 @@
   "CHARFORGE.Dialog.applyFailed": "Character Forge | Failed to apply changes. See the console for details.",
   "CHARFORGE.Settings.defaultHitDie.name": "Default Hit Die",
   "CHARFORGE.Settings.defaultHitDie.hint": "Used when rolling max HP if the actor has no class item yet.",
-  "CHARFORGE.Origin.title": "Species & Class",
-  "CHARFORGE.Origin.prompt": "Choose a species and class for {name}. Both are optional — you can add them later.",
-  "CHARFORGE.Origin.species": "Species",
-  "CHARFORGE.Origin.class": "Class",
-  "CHARFORGE.Origin.none": "None",
-  "CHARFORGE.Origin.skip": "Skip",
-  "CHARFORGE.Origin.apply": "Add to Character",
-  "CHARFORGE.Origin.applied": "Character Forge | Updated {name}'s species and class.",
-  "CHARFORGE.Origin.nothingSelected": "Select a species or class, or skip this step.",
-  "CHARFORGE.Origin.applyFailed": "Character Forge | Failed to add species or class. See the console for details.",
-  "CHARFORGE.Origin.replacing": "Replaces the current entry: {current}.",
-  "CHARFORGE.Origin.hpHint": "Adding a class sets level 1 hit points from its hit die and your Constitution, replacing any HP entered earlier."
+  "CHARFORGE.Origin.pickSpecies": "Character Forge | Choose a species for {name}.",
+  "CHARFORGE.Origin.pickClass": "Character Forge | Choose a class for {name}."
 }

@@ -1,5 +1,3 @@
-import { OriginDialog } from './origin-dialog.mjs';
-
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -365,8 +363,43 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     app.actor = actor;
     app.render();
 
-    // Step two: pick a species and class for the actor just saved.
-    new OriginDialog({ actor }).render({ force: true });
+    // Step two: hand off to the dnd5e sheet's own species and class pickers so
+    // the system runs its normal advancement flow (and modules that wrap it,
+    // like Plutonium, keep working).
+    await CharacterForgeDialog.#promptOrigin(actor);
+  }
+
+  /**
+   * Walk the actor through the dnd5e sheet's own species and class pickers.
+   *
+   * Creating these Items directly would skip the system's advancement flow --
+   * which is what sets level-one hit points -- and would bypass modules that
+   * wrap item creation, such as Plutonium. Delegating to the sheet's `findItem`
+   * action instead means the picker, the advancement prompts and any module
+   * hooks all behave exactly as they do from the character sheet.
+   */
+  static async #promptOrigin(actor) {
+    const sheet = actor.sheet;
+    const findItem = sheet?.constructor?.DEFAULT_OPTIONS?.actions?.findItem;
+    const handler = typeof findItem === 'function' ? findItem : findItem?.handler;
+    if (!handler) return;
+
+    const steps = [
+      { type: 'race', message: 'CHARFORGE.Origin.pickSpecies' },
+      { type: 'class', message: 'CHARFORGE.Origin.pickClass' },
+    ];
+
+    for (const { type, message } of steps) {
+      if (actor.items.some((i) => i.type === type)) continue;
+      ui.notifications.info(game.i18n.format(message, { name: actor.name }));
+
+      // findItem reads the item type off the triggering element's dataset and
+      // reports failures through the sheet, so give it one and let it own the
+      // error handling.
+      const target = document.createElement('button');
+      target.dataset.itemType = type;
+      await handler.call(sheet, new Event('click'), target);
+    }
   }
 
   /**
