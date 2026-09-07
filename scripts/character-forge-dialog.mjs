@@ -1,3 +1,5 @@
+import { OriginDialog } from './origin-dialog.mjs';
+
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -362,6 +364,9 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     ui.notifications.info(game.i18n.format('CHARFORGE.Dialog.applied', { name: actor.name }));
     app.actor = actor;
     app.render();
+
+    // Step two: pick a species and class for the actor just saved.
+    new OriginDialog({ actor }).render({ force: true });
   }
 
   /**
