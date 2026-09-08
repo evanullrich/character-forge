@@ -18,9 +18,9 @@ function pointBuyCost(score) {
  * gated behind the "Players Can Create Characters" world setting, so a GM can
  * open creation up during session zero and close it again afterwards.
  *
- * Foundry still enforces document permissions server-side; this only keeps the
- * UI from offering an action that would be refused. A player also needs the
- * world's own ACTOR_CREATE permission for the create to succeed.
+ * Turning that setting on also grants Foundry's own ACTOR_CREATE permission,
+ * but the permission is still checked here rather than assumed: it is what the
+ * server actually enforces, and a GM may have since changed it by hand.
  */
 function canCreateCharacter() {
   if (game.user.role >= CONST.USER_ROLES.ASSISTANT) return true;

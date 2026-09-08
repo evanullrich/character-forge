@@ -22,8 +22,42 @@ Hooks.once('init', () => {
     config: true,
     type: Boolean,
     default: false,
+    onChange: (value) => syncActorCreatePermission(value),
   });
 });
+
+/**
+ * Mirror the module's toggle onto Foundry's own ACTOR_CREATE permission.
+ *
+ * Foundry enforces document creation server-side, so the module setting alone
+ * cannot grant it -- without this a GM would have to flip the same decision in
+ * two places. Only the player-facing roles are touched: Assistants and
+ * Gamemasters keep whatever they already had, and every other permission in
+ * the object is left exactly as it was.
+ */
+async function syncActorCreatePermission(enabled) {
+  if (!game.user?.isGM) return;
+
+  const { PLAYER, TRUSTED } = CONST.USER_ROLES;
+  const permissions = foundry.utils.deepClone(game.settings.get('core', 'permissions'));
+  const current = permissions.ACTOR_CREATE ?? [];
+
+  const without = current.filter((role) => role !== PLAYER && role !== TRUSTED);
+  const next = enabled ? [...without, PLAYER, TRUSTED].sort((a, b) => a - b) : without;
+
+  // Foundry rejects no-op writes to this setting, and skipping them also keeps
+  // the module from broadcasting a permission update on every world load.
+  if (next.length === current.length && next.every((r) => current.includes(r))) return;
+
+  permissions.ACTOR_CREATE = next;
+
+  try {
+    await game.settings.set('core', 'permissions', permissions);
+  } catch (err) {
+    console.error(`${MODULE_ID} | Failed to update the ACTOR_CREATE permission`, err);
+    ui.notifications.error(game.i18n.localize('CHARFORGE.Settings.permissionSyncFailed'));
+  }
+}
 
 Hooks.once('ready', () => {
   console.log(`${MODULE_ID} | Ready`);

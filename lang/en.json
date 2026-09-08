@@ -44,5 +44,6 @@
   "CHARFORGE.Origin.pickSpecies": "Character Forge | Choose a species for {name}.",
   "CHARFORGE.Origin.pickClass": "Character Forge | Choose a class for {name}.",
   "CHARFORGE.Settings.playersCanCreate.name": "Players Can Create Characters",
-  "CHARFORGE.Settings.playersCanCreate.hint": "Let players create new characters with Character Forge. Gamemasters and Assistants can always create. Players can still update characters they own when this is off."
+  "CHARFORGE.Settings.playersCanCreate.hint": "Let players create new characters with Character Forge. This also grants Foundry's Create New Actors permission to players and trusted players, so you only set it here. Gamemasters and Assistants can always create.",
+  "CHARFORGE.Settings.permissionSyncFailed": "Character Forge | Couldn't update Foundry's Create New Actors permission. Set it in Configure Permissions instead."
 }
