@@ -14,13 +14,20 @@ function pointBuyCost(score) {
 }
 
 /**
- * Creating a character through Character Forge is limited to Gamemasters and
- * Assistant Gamemasters, regardless of the world's ACTOR_CREATE permission.
+ * Gamemasters and Assistants may always create a character. Everyone else is
+ * gated behind the "Players Can Create Characters" world setting, so a GM can
+ * open creation up during session zero and close it again afterwards.
+ *
  * Foundry still enforces document permissions server-side; this only keeps the
- * UI from offering an action that would be refused.
+ * UI from offering an action that would be refused. A player also needs the
+ * world's own ACTOR_CREATE permission for the create to succeed.
  */
 function canCreateCharacter() {
-  return game.user.role >= CONST.USER_ROLES.ASSISTANT;
+  if (game.user.role >= CONST.USER_ROLES.ASSISTANT) return true;
+  if (game.settings.get('character-forge', 'playersCanCreate') !== true) return false;
+
+  // Foundry refuses the create server-side without this, so do not offer it.
+  return game.user.can('ACTOR_CREATE');
 }
 
 /**

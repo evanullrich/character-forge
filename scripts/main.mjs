@@ -6,13 +6,22 @@ Hooks.once('init', () => {
   console.log(`${MODULE_ID} | Initializing`);
 
   game.settings.register(MODULE_ID, 'defaultHitDie', {
-    name: `${MODULE_ID}.Settings.defaultHitDie.name`,
-    hint: `${MODULE_ID}.Settings.defaultHitDie.hint`,
+    name: 'CHARFORGE.Settings.defaultHitDie.name',
+    hint: 'CHARFORGE.Settings.defaultHitDie.hint',
     scope: 'world',
     config: true,
     type: String,
     choices: { d6: 'd6', d8: 'd8', d10: 'd10', d12: 'd12' },
     default: 'd8',
+  });
+
+  game.settings.register(MODULE_ID, 'playersCanCreate', {
+    name: 'CHARFORGE.Settings.playersCanCreate.name',
+    hint: 'CHARFORGE.Settings.playersCanCreate.hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: false,
   });
 });
 
