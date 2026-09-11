@@ -140,7 +140,6 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       set('[name="hp.value"]', '');
       set('[name="hp.max"]', '');
       set('[name="alignment"]', '');
-      set('[name="background"]', '');
       for (const key of ABILITIES) set(`[name="abilities.${key}"]`, 10);
       this.refreshPointBuy();
       return;
@@ -152,10 +151,6 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     // hp.max is a nullable override; leave it blank when auto-derived.
     set('[name="hp.max"]', hp.max);
     set('[name="alignment"]', actor.system?.details?.alignment ?? '');
-
-    // Read the background off the actor's items; details.background is the
-    // resolved Item document rather than an id.
-    set('[name="background"]', actor.items.find((i) => i.type === 'background')?.name ?? '');
 
     // Show whichever player currently holds OWNER, if any.
     const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
@@ -359,7 +354,6 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
     try {
       await actor.update(updateData);
-      await app.#applyBackground(actor, formData['background']?.trim());
     } catch (err) {
       console.error('character-forge | Failed to apply character', err);
       ui.notifications.error(game.i18n.localize('CHARFORGE.Dialog.applyFailed'));
@@ -377,14 +371,14 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
   }
 
   /**
-   * Walk the actor through the dnd5e sheet's own species and class pickers.
+   * Walk the actor through the dnd5e sheet's own origin pickers.
    *
-   * Clicking the sheet's real "Add Species" / "Add Class" buttons rather than
-   * invoking its `findItem` action directly: modules such as Plutonium listen
-   * for the click and offer their own source chooser, so calling the action
-   * would skip straight past them to the compendium browser. Going through the
-   * button means whatever the user sees from the character sheet is exactly
-   * what they get here.
+   * Clicking the sheet's real "Add Species" / "Add Background" / "Add Class"
+   * buttons rather than invoking its `findItem` action directly: modules such
+   * as Plutonium listen for the click and offer their own source chooser, so
+   * calling the action would skip straight past them to the compendium
+   * browser. Going through the button means whatever the user sees from the
+   * character sheet is exactly what they get here.
    */
   static async #promptOrigin(actor) {
     const sheet = actor.sheet;
@@ -395,6 +389,7 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
 
     const steps = [
       { type: 'race', message: 'CHARFORGE.Origin.pickSpecies' },
+      { type: 'background', message: 'CHARFORGE.Origin.pickBackground' },
       { type: 'class', message: 'CHARFORGE.Origin.pickClass' },
     ];
 
@@ -407,12 +402,33 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       if (!button) continue;
 
       ui.notifications.info(game.i18n.format(message, { name: actor.name }));
+
+      // Start listening before the click: the picker renders about a
+      // millisecond later, so a listener registered afterwards misses it.
+      const opened = CharacterForgeDialog.#watchForWindows();
       button.click();
 
       // These pickers are non-blocking, so without waiting the second one
       // would open stacked on top of the first.
-      await CharacterForgeDialog.#waitForItem(actor, type);
+      await CharacterForgeDialog.#waitForItem(actor, type, opened);
     }
+  }
+
+  /**
+   * Collect every application window that renders from now on.
+   *
+   * Returned as a live set with a `stop()` to unhook it. The caller starts this
+   * before the click so nothing is missed in the gap, and keeps it running for
+   * the whole wait: a picker often hands off to another window (Plutonium's
+   * chooser opens the compendium browser half a second later), and treating
+   * only the first one as "the picker" would call the step finished too early.
+   */
+  static #watchForWindows() {
+    const opened = new Set();
+    const onRender = (app) => opened.add(app);
+    Hooks.on('renderApplicationV2', onRender);
+    opened.stop = () => Hooks.off('renderApplicationV2', onRender);
+    return opened;
   }
 
   /**
@@ -420,21 +436,19 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
    *
    * There is no promise to await here -- the picker a module substitutes in is
    * its own application, and some of them close without firing a close hook --
-   * so watch for the item and fall back to polling for the picker's window
+   * so watch for the item and fall back to polling for the picker's windows
    * disappearing from the DOM.
    */
-  static async #waitForItem(actor, type) {
-    if (actor.items.some((i) => i.type === type)) return;
+  static async #waitForItem(actor, type, opened) {
+    const stop = () => opened.stop();
 
-    // Whatever rendered in response to the click is the picker to watch.
-    const opened = new Set();
-    const onRender = (app) => opened.add(app);
-    Hooks.on('renderApplicationV2', onRender);
+    // Let the picker finish rendering before deciding whether one appeared.
     await new Promise((resolve) => setTimeout(resolve, 250));
-    Hooks.off('renderApplicationV2', onRender);
+
+    if (actor.items.some((i) => i.type === type)) return stop();
 
     // Nothing opened means there is no picker to wait on.
-    if (!opened.size) return;
+    if (!opened.size) return stop();
 
     const isOpen = () =>
       [...opened].some((app) => app.rendered && app.element?.isConnected);
@@ -446,6 +460,7 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
         done = true;
         clearInterval(timer);
         Hooks.off('createItem', onCreate);
+        stop();
         resolve();
       };
 
@@ -454,8 +469,10 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
       };
       Hooks.on('createItem', onCreate);
 
-      // Poll rather than hook: give up once every window the click opened has
-      // gone away, or if the sheet itself closes.
+      // Poll rather than hook: give up once every window this step opened has
+      // gone away, or if the sheet itself closes. A window that opens midway
+      // through -- the compendium browser the chooser hands off to -- is still
+      // being collected, so the step stays open until that one closes too.
       const timer = setInterval(() => {
         if (actor.items.some((i) => i.type === type)) finish();
         else if (!actor.sheet?.rendered) finish();
@@ -552,20 +569,4 @@ export class CharacterForgeDialog extends HandlebarsApplicationMixin(Application
     });
   }
 
-  // Background is a linked Item (system.details.background), not free text.
-  async #applyBackground(actor, backgroundName) {
-    if (!backgroundName) return;
-
-    // dnd5e only permits one background Item per character and rejects a second
-    // one outright. system.details.background is the resolved Item document (not
-    // an id), so find the existing background from the actor's own items and
-    // rename it rather than creating another.
-    const existing = actor.items.find((i) => i.type === 'background');
-    if (existing) {
-      if (existing.name !== backgroundName) await existing.update({ name: backgroundName });
-      return;
-    }
-
-    await actor.createEmbeddedDocuments('Item', [{ name: backgroundName, type: 'background' }]);
-  }
 }
